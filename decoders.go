@@ -25,53 +25,14 @@ package binanceapi
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
-	"net/http"
-	"strings"
+	"strconv"
 )
 
-var STREAM_URL = "wss://stream.binance.com:9443"
-
-type StreamType int
-
-const (
-	STREAM_TYPE_COMBINED     StreamType = 0
-	STREAM_TYPE_PARTIAL_BOOK StreamType = 1
-)
-
-type Stream struct {
-	Conn *websocket.Conn
-	Type StreamType
+func decodeStringFloat64(v interface{}) (val float64, err error) {
+	s, ok := v.(string)
+	if !ok {
+		return val, fmt.Errorf("value is not a string")
+	}
+	return strconv.ParseFloat(s, 64)
 }
 
-func OpenStream(stream string) (*Stream, error) {
-	url := fmt.Sprintf("%s/%s", STREAM_URL, stream)
-	fmt.Printf("Opening %s\n", url)
-	conn, response, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode != http.StatusSwitchingProtocols {
-		return nil, fmt.Errorf("failed to upgrade to websocket: %s", response.Status)
-	}
-	return &Stream{
-		Conn: conn,
-	}, nil
-}
-
-func (s *Stream) Next() ([]byte, error) {
-	_, payload, err := s.Conn.ReadMessage()
-	if err != nil {
-		return nil, err
-	}
-	return payload, nil
-}
-
-func OpenPartialBookDepthStream(symbol string, depth int) (*Stream, error) {
-	stream, err := OpenStream(fmt.Sprintf("ws/%s@depth%d", strings.ToLower(symbol), depth))
-	if err != nil {
-		return nil, err
-	}
-	stream.Type = STREAM_TYPE_PARTIAL_BOOK
-	return stream, nil
-}
