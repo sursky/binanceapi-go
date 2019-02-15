@@ -35,9 +35,10 @@ var STREAM_URL = "wss://stream.binance.com:9443"
 type StreamType int
 
 const (
-	STREAM_TYPE_COMBINED     StreamType = 0
-	STREAM_TYPE_AGGTRADE     StreamType = 1
-	STREAM_TYPE_PARTIAL_BOOK StreamType = 2
+	STREAM_TYPE_COMBINED          StreamType = 0
+	STREAM_TYPE_AGGTRADE          StreamType = 1
+	STREAM_TYPE_PARTIAL_BOOK      StreamType = 2
+	STREAM_TYPE_ALL_MARKET_TICKER StreamType = 3
 )
 
 type Stream struct {
@@ -69,6 +70,15 @@ func (s *Stream) Next() ([]byte, error) {
 
 func OpenPartialBookDepthStream(symbol string, depth int) (*Stream, error) {
 	stream, err := OpenStream(fmt.Sprintf("ws/%s@depth%d", strings.ToLower(symbol), depth))
+	if err != nil {
+		return nil, err
+	}
+	stream.Type = STREAM_TYPE_PARTIAL_BOOK
+	return stream, nil
+}
+
+func OpenAllMarketTickerStream() (*Stream, error) {
+	stream, err := OpenStream("ws/!ticker@arr")
 	if err != nil {
 		return nil, err
 	}

@@ -44,6 +44,11 @@ func (b *CombinedStreamBuilder) SubscribeAggTrade(symbol string) *CombinedStream
 	return b
 }
 
+func (b *CombinedStreamBuilder) SubscribeAllMarketTicker() *CombinedStreamBuilder {
+	b.streams = append(b.streams, "!ticker@arr")
+	return b
+}
+
 func (b *CombinedStreamBuilder) Connect() (*Stream, error) {
 	endpoint := fmt.Sprintf("stream?streams=%s", strings.Join(b.streams, "/"))
 	stream, err := OpenStream(endpoint)
@@ -82,10 +87,16 @@ type CombinedStreamAggTrade struct {
 	AggTrade StreamAggTrade `json:"data"`
 }
 
+type CombinedAllMarketTickerStream struct {
+	Stream  string                `json:"stream"`
+	Tickers []TickerStreamMessage `json:"data"`
+}
+
 type CombinedStreamMessage struct {
 	Type     StreamType
 	Stream   string
 	AggTrade *StreamAggTrade
+	Tickers  []TickerStreamMessage
 }
 
 func (r *CombinedStreamMessage) UnmarshalJSON(b []byte) error {
@@ -100,12 +111,21 @@ func (r *CombinedStreamMessage) UnmarshalJSON(b []byte) error {
 		r.Stream = message.Stream
 		r.AggTrade = &message.AggTrade
 		return nil
+	} else if strings.HasPrefix(prefix, `{"stream":"!ticker@arr"`) {
+		var message CombinedAllMarketTickerStream
+		if err := json.Unmarshal(b, &message); err != nil {
+			return err
+		}
+		r.Type = STREAM_TYPE_ALL_MARKET_TICKER
+		r.Stream = message.Stream
+		r.Tickers = message.Tickers
+		return nil
 	}
 
 	return fmt.Errorf("unknown stream type")
 }
 
-func DecodeStreamMessage(b []byte) (CombinedStreamMessage, error) {
+func DecodeCombinedStreamMessage(b []byte) (CombinedStreamMessage, error) {
 	var message CombinedStreamMessage
 	err := json.Unmarshal(b, &message)
 	return message, err
