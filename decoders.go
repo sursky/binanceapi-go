@@ -35,4 +35,3 @@ func decodeStringFloat64(v interface{}) (val float64, err error) {
 	}
 	return strconv.ParseFloat(s, 64)
 }
-

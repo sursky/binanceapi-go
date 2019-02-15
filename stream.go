@@ -36,7 +36,8 @@ type StreamType int
 
 const (
 	STREAM_TYPE_COMBINED     StreamType = 0
-	STREAM_TYPE_PARTIAL_BOOK StreamType = 1
+	STREAM_TYPE_AGGTRADE     StreamType = 1
+	STREAM_TYPE_PARTIAL_BOOK StreamType = 2
 )
 
 type Stream struct {
@@ -46,7 +47,6 @@ type Stream struct {
 
 func OpenStream(stream string) (*Stream, error) {
 	url := fmt.Sprintf("%s/%s", STREAM_URL, stream)
-	fmt.Printf("Opening %s\n", url)
 	conn, response, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return nil, err
