@@ -60,6 +60,24 @@ func OpenStream(stream string) (*Stream, error) {
 	}, nil
 }
 
+func OpenSingleStream(stream string) (*Stream, error) {
+	url := fmt.Sprintf("%s/ws/%s", STREAM_URL, stream)
+	conn, response, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusSwitchingProtocols {
+		return nil, fmt.Errorf("failed to upgrade to websocket: %s", response.Status)
+	}
+	return &Stream{
+		Conn: conn,
+	}, nil
+}
+
+func (s *Stream) Close() {
+	s.Conn.Close()
+}
+
 func (s *Stream) Next() ([]byte, error) {
 	_, payload, err := s.Conn.ReadMessage()
 	if err != nil {
@@ -69,7 +87,7 @@ func (s *Stream) Next() ([]byte, error) {
 }
 
 func OpenPartialBookDepthStream(symbol string, depth int) (*Stream, error) {
-	stream, err := OpenStream(fmt.Sprintf("ws/%s@depth%d", strings.ToLower(symbol), depth))
+	stream, err := OpenSingleStream(fmt.Sprintf("%s@depth%d", strings.ToLower(symbol), depth))
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +96,7 @@ func OpenPartialBookDepthStream(symbol string, depth int) (*Stream, error) {
 }
 
 func OpenAllMarketTickerStream() (*Stream, error) {
-	stream, err := OpenStream("ws/!ticker@arr")
+	stream, err := OpenSingleStream("!ticker@arr")
 	if err != nil {
 		return nil, err
 	}
