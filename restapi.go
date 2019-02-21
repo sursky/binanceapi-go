@@ -44,3 +44,21 @@ func (c *RestClient) GetPriceTickerAll() ([]PriceTickerResponse, error) {
 	err := c.GetAndDecode(endpoint, nil, &response)
 	return response, err
 }
+
+type BookTickerResponse struct {
+	Symbol    string  `json:"symbol"`
+	BidPrice  float64 `json:"bidPrice,string"`
+	BidVolume float64 `json:"bidQty,string"`
+	AskPrice  float64 `json:"askPrice,string"`
+	AskVolume float64 `json:"askQty,string"`
+}
+
+func (c *RestClient) GetBookTicker(symbol string) (BookTickerResponse, error) {
+	endpoint := "/api/v3/ticker/bookTicker"
+	var response BookTickerResponse
+	params := map[string]interface{}{
+		"symbol": symbol,
+	}
+	err := c.GetAndDecode(endpoint, params, &response)
+	return response, err
+}
