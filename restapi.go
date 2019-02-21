@@ -23,6 +23,11 @@
 
 package binanceapi
 
+import (
+	"fmt"
+	"net/http"
+)
+
 type PriceTickerResponse struct {
 	Symbol string  `json:"symbol"`
 	Price  float64 `json:"price,string"`
@@ -61,4 +66,41 @@ func (c *RestClient) GetBookTicker(symbol string) (BookTickerResponse, error) {
 	}
 	err := c.GetAndDecode(endpoint, params, &response)
 	return response, err
+}
+
+type UserDataStreamResponse struct {
+	ListenKey string `json:"listenKey"`
+}
+
+func (c *RestClient) GetUserDataStream() (string, error) {
+	httpResponse, err := c.PostWithApiKey("/api/v1/userDataStream", nil)
+	if err != nil {
+		return "", err
+	}
+
+	if httpResponse.StatusCode >= 400 {
+		return "", NewRestApiErrorFromResponse(httpResponse)
+	}
+
+	var response UserDataStreamResponse
+	if err := c.decodeBody(httpResponse, &response); err != nil {
+		return "", err
+	}
+
+	return response.ListenKey, nil
+}
+
+func (c *RestClient) PutUserStreamKeepAlive(listenKey string) error {
+	queryString := c.BuildQueryString(map[string]interface{}{
+		"listenKey": listenKey,
+	})
+	path := fmt.Sprintf("/api/v1/userDataStream?%s", queryString)
+	httpResponse, err := c.PutWithApiKey(path)
+	if err != nil {
+		return err
+	}
+	if httpResponse.StatusCode != http.StatusOK {
+		return NewRestApiErrorFromResponse(httpResponse)
+	}
+	return nil
 }

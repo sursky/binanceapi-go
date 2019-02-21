@@ -24,6 +24,7 @@
 package binanceapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -34,10 +35,18 @@ import (
 const API_ROOT = "https://api.binance.com"
 
 type RestClient struct {
+	apiKey    string
+	apiSecret string
 }
 
 func NewRestClient() *RestClient {
 	return &RestClient{}
+}
+
+func (c *RestClient) WithAuth(key string, secret string) *RestClient {
+	c.apiKey = key
+	c.apiSecret = secret
+	return c
 }
 
 // Perform an unauthenticated GET request.
@@ -61,6 +70,45 @@ func (c *RestClient) Get(endpoint string, params map[string]interface{}) (*http.
 	if err != nil {
 		return nil, err
 	}
+
+	return http.DefaultClient.Do(request)
+}
+
+// Send a POST request with only the API key and no other authentication.
+func (c *RestClient) PostWithApiKey(endpoint string, params map[string]interface{}) (*http.Response, error) {
+	url := fmt.Sprintf("%s%s", API_ROOT, endpoint)
+	queryString := ""
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
+	if params != nil {
+		queryString = c.BuildQueryString(params)
+		if queryString != "" {
+			url = fmt.Sprintf("%s?%s", url, queryString)
+		}
+	}
+
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.apiKey != "" {
+		request.Header.Add("X-MBX-APIKEY", c.apiKey)
+	}
+
+	return http.DefaultClient.Do(request)
+}
+
+func (c *RestClient) PutWithApiKey(path string) (*http.Response, error) {
+	url := fmt.Sprintf("%s%s", API_ROOT, path)
+	request, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("X-MBX-APIKEY", c.apiKey)
 
 	return http.DefaultClient.Do(request)
 }
@@ -93,11 +141,20 @@ func (c *RestClient) GetAndDecode(endpoint string, params map[string]interface{}
 		return err
 	}
 	defer httpResponse.Body.Close()
-	if httpResponse.StatusCode != 200 {
-		return NewRestApiErrorFromResponse(httpResponse)
+	return c.decodeBody(httpResponse, response)
+}
+
+func (c *RestClient) decodeBody(r *http.Response, v interface{}) error {
+	raw, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
 	}
-	decoder := json.NewDecoder(httpResponse.Body)
-	return decoder.Decode(response)
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(v); err != nil {
+		return err
+	}
+	return nil
 }
 
 type RestApiError struct {
