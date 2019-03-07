@@ -25,6 +25,9 @@ package binanceapi
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -74,6 +77,75 @@ func (c *RestClient) Get(endpoint string, params map[string]interface{}) (*http.
 	return http.DefaultClient.Do(request)
 }
 
+func (c *RestClient) GetWithAuth(endpoint string, params map[string]interface{}) (*http.Response, error) {
+
+	url := fmt.Sprintf("%s%s", API_ROOT, endpoint)
+	queryString := ""
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
+	params["recvWindow"] = 5000
+	params["timestamp"] = getTimeMillis()
+
+	if params != nil {
+		queryString = c.BuildQueryString(params)
+		if queryString != "" {
+			url = fmt.Sprintf("%s?%s", url, queryString)
+		}
+	}
+
+	mac := hmac.New(sha256.New, []byte(c.apiSecret))
+	mac.Write([]byte(queryString))
+	signature := hex.EncodeToString(mac.Sum(nil))
+	url = fmt.Sprintf("%s&signature=%s",
+		url, signature)
+
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("X-MBX-APIKEY", c.apiKey)
+
+	return http.DefaultClient.Do(request)
+}
+
+func (c *RestClient) Post(endpoint string, params map[string]interface{}) (*http.Response, error) {
+	url := fmt.Sprintf("%s%s", API_ROOT, endpoint)
+	queryString := ""
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
+	params["recvWindow"] = 5000
+	params["timestamp"] = getTimeMillis()
+
+	if params != nil {
+		queryString = c.BuildQueryString(params)
+		if queryString != "" {
+			url = fmt.Sprintf("%s?%s", url, queryString)
+		}
+	}
+
+	mac := hmac.New(sha256.New, []byte(c.apiSecret))
+	mac.Write([]byte(queryString))
+	signature := hex.EncodeToString(mac.Sum(nil))
+	url = fmt.Sprintf("%s&signature=%s",
+		url, signature)
+
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("X-MBX-APIKEY", c.apiKey)
+
+	return http.DefaultClient.Do(request)
+}
+
 // Send a POST request with only the API key and no other authentication.
 func (c *RestClient) PostWithApiKey(endpoint string, params map[string]interface{}) (*http.Response, error) {
 	url := fmt.Sprintf("%s%s", API_ROOT, endpoint)
@@ -113,6 +185,40 @@ func (c *RestClient) PutWithApiKey(path string) (*http.Response, error) {
 	return http.DefaultClient.Do(request)
 }
 
+func (c *RestClient) Delete(endpoint string, params map[string]interface{}) (*http.Response, error) {
+	url := fmt.Sprintf("%s%s", API_ROOT, endpoint)
+	queryString := ""
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
+	params["recvWindow"] = 5000
+	params["timestamp"] = getTimeMillis()
+
+	if params != nil {
+		queryString = c.BuildQueryString(params)
+		if queryString != "" {
+			url = fmt.Sprintf("%s?%s", url, queryString)
+		}
+	}
+
+	mac := hmac.New(sha256.New, []byte(c.apiSecret))
+	mac.Write([]byte(queryString))
+	signature := hex.EncodeToString(mac.Sum(nil))
+	url = fmt.Sprintf("%s&signature=%s",
+		url, signature)
+
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Add("X-MBX-APIKEY", c.apiKey)
+
+	return http.DefaultClient.Do(request)
+}
+
 func (c *RestClient) BuildQueryString(params map[string]interface{}) string {
 	queryString := ""
 
@@ -136,6 +242,15 @@ func (c *RestClient) BuildQueryString(params map[string]interface{}) string {
 }
 
 func (c *RestClient) GetAndDecode(endpoint string, params map[string]interface{}, response interface{}) error {
+	httpResponse, err := c.Get(endpoint, params)
+	if err != nil {
+		return err
+	}
+	defer httpResponse.Body.Close()
+	return c.decodeBody(httpResponse, response)
+}
+
+func (c *RestClient) AuthGetAndDecode(endpoint string, params map[string]interface{}, response interface{}) error {
 	httpResponse, err := c.Get(endpoint, params)
 	if err != nil {
 		return err

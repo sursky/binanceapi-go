@@ -24,7 +24,9 @@
 package binanceapi
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -103,4 +105,132 @@ func (c *RestClient) PutUserStreamKeepAlive(listenKey string) error {
 		return NewRestApiErrorFromResponse(httpResponse)
 	}
 	return nil
+}
+
+type QueryOrderResponse struct {
+	Symbol        string      `json:"symbol"`
+	OrderId       int64       `json:"orderId"`
+	ClientOrderId string      `json:"clientOrderId"`
+	Price         float64     `json:"price,string"`
+	OrigQty       float64     `json:"origQty,string"`
+	ExecutedQty   float64     `json:"executeQty,string"`
+	Status        OrderStatus `json:"status"`
+	TimeInForce   TimeInForce `json:"timeInForce"`
+	Type          OrderType   `json:"type"`
+	Side          OrderSide   `json:"side"`
+	StopPrice     float64     `json:"stopPrice,string"`
+	IcebergQty    float64     `json:"icebergQty,string"`
+	TimeMillis    int64       `json:"time"`
+	IsWorking     bool        `json:"isWorking"`
+}
+
+func (c *RestClient) GetOrderByOrderId(symbol string, orderId int64) (QueryOrderResponse, error) {
+	var response QueryOrderResponse
+	params := map[string]interface{}{
+		"symbol":  symbol,
+		"orderId": orderId,
+	}
+	httpResponse, err := c.GetWithAuth("/api/v3/order", params)
+	if err != nil {
+		return response, err
+	}
+	defer httpResponse.Body.Close()
+	if httpResponse.StatusCode != http.StatusOK {
+		return response, NewRestApiErrorFromResponse(httpResponse)
+	}
+	decoder := json.NewDecoder(httpResponse.Body)
+	if err := decoder.Decode(&response); err != nil {
+		return response, err
+	}
+	return response, nil
+}
+
+func (c *RestClient) GetOrderByClientId(symbol string, clientId string) (QueryOrderResponse, error) {
+	var response QueryOrderResponse
+	params := map[string]interface{}{
+		"symbol":            symbol,
+		"origClientOrderId": clientId,
+	}
+	httpResponse, err := c.GetWithAuth("/api/v3/order", params)
+	if err != nil {
+		return response, err
+	}
+	defer httpResponse.Body.Close()
+	if httpResponse.StatusCode != http.StatusOK {
+		return response, NewRestApiErrorFromResponse(httpResponse)
+	}
+	decoder := json.NewDecoder(httpResponse.Body)
+	if err := decoder.Decode(&response); err != nil {
+		return response, err
+	}
+	return response, nil
+}
+
+type MyTradesResponseEntry struct {
+	ID              int64   `json:"id"`
+	OrderID         int64   `json:"orderId"`
+	Price           float64 `json:"price,string"`
+	Quantity        float64 `json:"qty,string"`
+	Commission      float64 `json:"commission,string"`
+	CommissionAsset string  `json:"commissionAsset"`
+	TimeMillis      int64   `json:"time"`
+	IsBuyer         bool    `json:"isBuyer"`
+	IsMaker         bool    `json:"isMaker"`
+	IsBestMatch     bool    `json:"isBestMatch"`
+}
+
+func (c *RestClient) GetMytrades(symbol string, limit int64, fromId int64) ([]MyTradesResponseEntry, error) {
+	endpoint := "/api/v3/myTrades"
+	params := map[string]interface{}{
+		"symbol": symbol,
+	}
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	if fromId > -1 {
+		params["fromId"] = fromId
+	}
+	var response []MyTradesResponseEntry
+	err := c.AuthGetAndDecode(endpoint, params, &response)
+	return response, err
+}
+
+type AccountInfoBalance struct {
+	Asset  string  `json:"asset"`
+	Free   float64 `json:"free,string"`
+	Locked float64 `json:"locked,string"`
+}
+
+type AccountInfoResponse struct {
+	MakerCommission  int64                `json:"makerCommission"`
+	TakerCommission  int64                `json:"takerCommission"`
+	BuyerCommission  int64                `json:"buyerCommission"`
+	SellCommission   int64                `json:"sellCommission"`
+	CanTrade         bool                 `json:"canTrade"`
+	CanWithdraw      bool                 `json:"canWithdraw"`
+	CanDeposit       bool                 `json:"canDeposit"`
+	UpdateTimeMillis int64                `json:"updateTime"`
+	Balances         []AccountInfoBalance `json:"balances"`
+}
+
+func (c *RestClient) GetAccount() (*AccountInfoResponse, error) {
+	httpResponse, err := c.GetWithAuth("/api/v3/account", nil)
+	if err != nil {
+		return nil, err
+	}
+	if httpResponse.StatusCode >= 400 {
+		return nil, NewRestApiErrorFromResponse(httpResponse)
+	}
+
+	body, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AccountInfoResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, err
+	}
+
+	return &response, nil
 }
