@@ -30,6 +30,18 @@ import (
 	"net/http"
 )
 
+// GET /api/v1/time
+type TimeResponse struct {
+	ServerTime int64 `json:"serverTime"`
+}
+
+func (c *RestClient) GetTime() (TimeResponse, error) {
+	endpoint := "/api/v1/time"
+	var response TimeResponse
+	err := c.GetAndDecode(endpoint, nil, &response)
+	return response, err
+}
+
 type PriceTickerResponse struct {
 	Symbol string  `json:"symbol"`
 	Price  float64 `json:"price,string"`
