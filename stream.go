@@ -26,7 +26,9 @@ package binanceapi
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -40,6 +42,14 @@ const (
 	STREAM_TYPE_PARTIAL_BOOK      StreamType = 2
 	STREAM_TYPE_ALL_MARKET_TICKER StreamType = 3
 )
+
+func init() {
+	envStreamUrl := os.Getenv("BINANCE_STREAM_URL")
+	if envStreamUrl != "" {
+		log.Printf("Using Binance Stream URL from environment: %s", envStreamUrl)
+		STREAM_URL = envStreamUrl
+	}
+}
 
 type Stream struct {
 	Conn *websocket.Conn
