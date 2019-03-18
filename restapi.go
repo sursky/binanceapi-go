@@ -203,7 +203,22 @@ func (c *RestClient) GetMytrades(symbol string, limit int64, fromId int64) ([]My
 		params["fromId"] = fromId
 	}
 	var response []MyTradesResponseEntry
-	err := c.AuthGetAndDecode(endpoint, params, &response)
+	httpResponse, err := c.GetWithAuth(endpoint, params)
+	if err != nil {
+		return response, err
+	}
+	if httpResponse.StatusCode != http.StatusOK {
+		return response, fmt.Errorf("%s", httpResponse.Status)
+	}
+	body, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		return response, err
+	}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return response, fmt.Errorf("failed to decode body: %v: %s",
+			err, body)
+	}
 	return response, err
 }
 
