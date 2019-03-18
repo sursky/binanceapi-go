@@ -28,8 +28,8 @@ type ExchangeInfoResponse struct {
 	ServerTimeMillis int64  `json:"serverTime"`
 	RateLimits       []struct {
 		RateLimitType     string `json:"rateLimitType"`
-		RateLimitInterval string `json"rateLimitInterval"`
-		Limit             int64  `json"limit"`
+		RateLimitInterval string `json:"rateLimitInterval"`
+		Limit             int64  `json:"limit"`
 	}
 	Symbols []SymbolInfoResponse `json:"symbols"`
 }
@@ -38,7 +38,7 @@ type SymbolInfoResponse struct {
 	Symbol              string                 `json:"symbol"`
 	Status              string                 `json:"status"`
 	BaseAsset           string                 `json:"baseAsset"`
-	BaseAssetPrecision  int64                  `json:"baseAssetPrecision`
+	BaseAssetPrecision  int64                  `json:"baseAssetPrecision"`
 	QuoteAsset          string                 `json:"quoteAsset"`
 	QuoteAssetPrecision int64                  `json:"quoteAssetPrecision"`
 	OrderTypes          []string               `json:"orderTypes"`
